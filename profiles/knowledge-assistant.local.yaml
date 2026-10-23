@@ -1,0 +1,67 @@
+# Lighthouse use case, runnable offline (no cloud credentials). Used by tests and the CI eval gate.
+name: knowledge-assistant
+description: Employee knowledge assistant over policies, runbooks and service catalogue
+corpus_paths: [data/sample_corpus]
+
+models:
+  provider: local
+  chat_model: local-extractive
+  embedding_model: local-hash-384
+  embedding_dim: 384
+
+chunking:
+  strategy: recursive          # recursive | semantic | parent_child (compare with `make chunk-bakeoff`)
+  target_tokens: 120
+  overlap_tokens: 20
+  contextual_headers: true
+  redact_pii: true
+
+vectorstore:
+  kind: memory
+  index: kb-local-hash-384-v1
+
+retrieval:
+  mode: hybrid+graph
+  top_k: 20
+  rerank_top_n: 5
+  reranker: lexical
+  corrective: true
+
+guardrails:
+  provider: local
+  denied_topics: ["salary of", "home address of"]
+  min_groundedness: 0.6
+
+kg:
+  enabled: true
+  ontology_path: ontology/enterprise.yaml
+  store: memory
+
+agent:
+  pattern: router
+  max_steps: 6
+  max_cost_usd: 0.50
+
+evals:
+  golden_set: evals/golden/knowledge-assistant.jsonl
+  # Offline gate: guards the retrieval/guardrail/agent plumbing against regressions.
+  # Answer-quality thresholds from the spec (faithfulness >= 0.85 judged by an LLM) apply to the cloud profiles.
+  thresholds:
+    "hit_rate@5": 0.90
+    context_recall: 0.90
+    mrr: 0.75
+    faithfulness: 0.85
+    refusal_accuracy: 1.0
+    acl_leakage_free: 1.0
+    agent_tool_accuracy: 1.0
+    agent_task_success: 1.0
+
+prompts:
+  warehouse_path: data/warehouse/analytics.db
+  sql_examples: >-
+    [{"question": "total revenue by region in 2025",
+      "sql": "SELECT region, ROUND(SUM(revenue_inr_lakh),1) AS revenue_inr_lakh FROM sales WHERE month LIKE '2025-%' GROUP BY region ORDER BY revenue_inr_lakh DESC"},
+     {"question": "how many employees per department headcount",
+      "sql": "SELECT department, employees FROM headcount ORDER BY employees DESC"},
+     {"question": "monthly orders trend for a region",
+      "sql": "SELECT month, SUM(orders) AS orders FROM sales GROUP BY month ORDER BY month"}]

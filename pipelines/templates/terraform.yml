@@ -1,0 +1,46 @@
+# terraform init/plan/apply for one cloud + env. Credentials come from the pipeline service
+# connections (OIDC workload identity federation, no stored secrets).
+parameters:
+  - name: cloud
+    type: string
+    values: [aws, azure]
+  - name: env
+    type: string
+  - name: imageTag
+    type: string
+
+steps:
+  - ${{ if eq(parameters.cloud, 'aws') }}:
+      - task: AWSShellScript@1
+        displayName: terraform apply (aws-${{ parameters.env }})
+        inputs:
+          awsCredentials: $(awsServiceConnection)
+          regionName: $(awsRegion)
+          scriptType: inline
+          inlineScript: |
+            cd infra/terraform/envs/aws-${{ parameters.env }}
+            terraform init -input=false \
+              -backend-config="bucket=$(tfStateBucket)" -backend-config="key=genai/aws-${{ parameters.env }}.tfstate" \
+              -backend-config="region=$(awsRegion)" -backend-config="dynamodb_table=$(tfLockTable)"
+            terraform plan -input=false -out=tfplan -var-file=$(Agent.TempDirectory)/aws-${{ parameters.env }}.tfvars \
+              -var="image_tag=${{ parameters.imageTag }}"
+            terraform apply -input=false tfplan
+  - ${{ if eq(parameters.cloud, 'azure') }}:
+      - task: AzureCLI@2
+        displayName: terraform apply (azure-${{ parameters.env }})
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: bash
+          scriptLocation: inlineScript
+          addSpnToEnvironment: true
+          inlineScript: |
+            export ARM_USE_OIDC=true ARM_CLIENT_ID=$servicePrincipalId ARM_TENANT_ID=$tenantId \
+                   ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv) ARM_OIDC_TOKEN=$idToken
+            cd infra/terraform/envs/azure-${{ parameters.env }}
+            terraform init -input=false \
+              -backend-config="resource_group_name=$(tfStateRg)" -backend-config="storage_account_name=$(tfStateAccount)" \
+              -backend-config="container_name=tfstate" -backend-config="key=genai/azure-${{ parameters.env }}.tfstate" \
+              -backend-config="use_azuread_auth=true"
+            terraform plan -input=false -out=tfplan -var-file=$(Agent.TempDirectory)/azure-${{ parameters.env }}.tfvars \
+              -var="image_tag=${{ parameters.imageTag }}"
+            terraform apply -input=false tfplan

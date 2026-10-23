@@ -1,0 +1,28 @@
+# Builds ONE image (API, MCP server, ingest worker) and pushes it to ECR and ACR.
+parameters:
+  - name: imageTag
+    type: string
+
+steps:
+  - script: docker build -t genai-platform:${{ parameters.imageTag }} .
+    displayName: docker build
+  - task: AWSShellScript@1
+    displayName: Push to ECR
+    inputs:
+      awsCredentials: $(awsServiceConnection)
+      regionName: $(awsRegion)
+      scriptType: inline
+      inlineScript: |
+        aws ecr get-login-password | docker login --username AWS --password-stdin $(ecrRegistry)
+        docker tag genai-platform:${{ parameters.imageTag }} $(ecrRegistry)/genai-dev:${{ parameters.imageTag }}
+        docker push $(ecrRegistry)/genai-dev:${{ parameters.imageTag }}
+  - task: AzureCLI@2
+    displayName: Push to ACR
+    inputs:
+      azureSubscription: $(azureServiceConnection)
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az acr login --name $(acrName)
+        docker tag genai-platform:${{ parameters.imageTag }} $(acrName).azurecr.io/genai-platform:${{ parameters.imageTag }}
+        docker push $(acrName).azurecr.io/genai-platform:${{ parameters.imageTag }}

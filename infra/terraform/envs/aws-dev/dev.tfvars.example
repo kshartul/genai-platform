@@ -1,0 +1,8 @@
+region                 = "ap-south-1"
+env                    = "dev"
+vpc_id                 = "vpc-xxxxxxxx"
+private_subnet_ids     = ["subnet-aaaa", "subnet-bbbb"]
+image_tag              = "set-by-pipeline"
+bedrock_chat_model     = "<bedrock model id or inference profile ARN>"
+bedrock_fallback_model = "<second model id>"
+alert_email            = "platform-team@example.com"

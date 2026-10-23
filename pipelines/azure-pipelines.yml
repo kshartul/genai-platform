@@ -1,0 +1,98 @@
+# Main pipeline: CI -> eval gate -> image build -> deploy (AWS and Azure dev, then prod with approvals).
+# A prompt, chunking, model, ontology or retrieval change cannot reach an environment without
+# passing the eval gate.
+
+trigger:
+  branches: { include: [main] }
+pr:
+  branches: { include: [main] }
+
+variables:
+  - group: genai-platform-common          # TF state config, registry names, service connection names
+  - name: imageTag
+    value: $(Build.SourceVersion)
+  - name: pythonVersion
+    value: "3.12"
+
+stages:
+  - stage: CI
+    jobs:
+      - job: lint_test
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - template: templates/python-setup.yml
+            parameters: { pythonVersion: $(pythonVersion) }
+          - script: ruff check src services tests
+            displayName: Lint
+          - script: python scripts/seed_warehouse.py && pytest -q --junitxml=reports/junit.xml
+            displayName: Unit and integration tests (offline profile)
+          - task: PublishTestResults@2
+            condition: always()
+            inputs: { testResultsFiles: reports/junit.xml }
+      - job: terraform_validate
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - script: |
+              for d in infra/terraform/envs/*; do
+                terraform -chdir=$d init -backend=false -input=false && terraform -chdir=$d validate || exit 1
+              done
+              terraform fmt -check -recursive infra/terraform
+            displayName: terraform validate + fmt
+
+  - stage: EvalGate
+    dependsOn: CI
+    jobs:
+      - job: offline_eval
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - template: templates/python-setup.yml
+            parameters: { pythonVersion: $(pythonVersion) }
+          - script: |
+              python scripts/seed_warehouse.py
+              genai eval --profile profiles/knowledge-assistant.local.yaml --report reports/eval-local.json
+            displayName: Golden-set eval (blocks on threshold regression)
+          - publish: reports
+            artifact: eval-reports
+            condition: always()
+
+  - stage: Build
+    dependsOn: EvalGate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: image
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - template: templates/docker-push.yml
+            parameters: { imageTag: $(imageTag) }
+
+  - stage: Deploy_AWS_Dev
+    dependsOn: Build
+    jobs:
+      - deployment: aws_dev
+        environment: genai-aws-dev
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - template: templates/terraform.yml
+                  parameters: { cloud: aws, env: dev, imageTag: $(imageTag) }
+                - template: templates/cloud-eval.yml
+                  parameters: { profile: profiles/knowledge-assistant.aws.yaml, cloud: aws }
+
+  - stage: Deploy_Azure_Dev
+    dependsOn: Build
+    jobs:
+      - deployment: azure_dev
+        environment: genai-azure-dev
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - template: templates/terraform.yml
+                  parameters: { cloud: azure, env: dev, imageTag: $(imageTag) }
+                - template: templates/cloud-eval.yml
+                  parameters: { profile: profiles/knowledge-assistant.azure.yaml, cloud: azure }

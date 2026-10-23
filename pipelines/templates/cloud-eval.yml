@@ -1,0 +1,33 @@
+# Post-deploy eval against real models and stores; a failure blocks promotion to the next stage.
+parameters:
+  - name: profile
+    type: string
+  - name: cloud
+    type: string
+
+steps:
+  - task: UsePythonVersion@0
+    inputs: { versionSpec: "3.12" }
+  - ${{ if eq(parameters.cloud, 'aws') }}:
+      - task: AWSShellScript@1
+        displayName: Cloud eval (aws)
+        inputs:
+          awsCredentials: $(awsServiceConnection)
+          regionName: $(awsRegion)
+          scriptType: inline
+          inlineScript: |
+            pip install -e ".[aws,dev]" && python scripts/seed_warehouse.py
+            genai eval --profile ${{ parameters.profile }} --report reports/eval-aws.json
+  - ${{ if eq(parameters.cloud, 'azure') }}:
+      - task: AzureCLI@2
+        displayName: Cloud eval (azure)
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            pip install -e ".[azure,dev]" && python scripts/seed_warehouse.py
+            genai eval --profile ${{ parameters.profile }} --report reports/eval-azure.json
+  - publish: reports
+    artifact: eval-${{ parameters.cloud }}
+    condition: always()

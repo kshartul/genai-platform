@@ -1,0 +1,40 @@
+# Same use case on AWS: Bedrock + OpenSearch Serverless + Neptune + Bedrock Guardrails.
+# Endpoints/ids come from Terraform outputs (infra/terraform/envs/aws-dev) via environment variables.
+name: knowledge-assistant
+corpus_paths: [data/sample_corpus]
+
+models:
+  provider: aws
+  region: ${AWS_REGION:-ap-south-1}
+  chat_model: ${BEDROCK_CHAT_MODEL}            # e.g. an Anthropic Claude model id or inference profile ARN
+  fallback_models: [${BEDROCK_FALLBACK_MODEL}]
+  embedding_model: amazon.titan-embed-text-v2:0
+  embedding_dim: 1024
+  max_tokens: 800
+
+chunking: {strategy: parent_child, target_tokens: 600, child_tokens: 150, contextual_headers: true, redact_pii: true}
+
+vectorstore:
+  kind: opensearch
+  endpoint: ${AOSS_ENDPOINT}
+  index: kb-titan-v2-1024-v1
+
+retrieval: {mode: hybrid+graph, top_k: 30, rerank_top_n: 6, reranker: bedrock, query_rewrite: true, corrective: true}
+
+guardrails:
+  provider: bedrock
+  guardrail_id: ${BEDROCK_GUARDRAIL_ID}
+  guardrail_version: ${BEDROCK_GUARDRAIL_VERSION:-1}
+  min_groundedness: 0.7
+
+kg: {enabled: true, ontology_path: ontology/enterprise.yaml, store: neptune, uri: "${NEPTUNE_BOLT_URI}"}
+
+agent: {pattern: react, max_steps: 8, max_cost_usd: 0.50}
+
+evals:
+  golden_set: evals/golden/knowledge-assistant.jsonl
+  thresholds: {"hit_rate@5": 0.80, context_recall: 0.80, faithfulness: 0.85, refusal_accuracy: 1.0, acl_leakage_free: 1.0,
+               agent_tool_accuracy: 0.80, latency_p95_ms: 2500}
+
+prompts:
+  warehouse_path: data/warehouse/analytics.db   # replace the tool backend with Redshift Data API in Phase 4

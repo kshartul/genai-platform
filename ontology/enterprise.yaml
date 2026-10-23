@@ -1,0 +1,36 @@
+# Domain ontology v1 (versioned; reviewed with domain owners before each change).
+# `patterns` drive the offline PatternExtractor; cloud profiles use LLMExtractor with this
+# file rendered as a JSON schema. Keep v1 small: extend only when evals show a gap.
+version: "1.0"
+
+entity_types:
+  Team:
+    description: An organisational team that owns systems.
+    patterns: ['\b((?:[A-Z][a-z0-9]+ ){1,3}Team)\b']
+  System:
+    description: A software service, API, pipeline or database.
+    patterns: ['\b([A-Z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*(?: [A-Z][a-z]+)?(?: Service| API| Pipeline| Database))\b']
+  Policy:
+    description: A named corporate policy.
+    patterns: ['\b((?:[A-Z][A-Za-z]+ ){1,3}Policy)\b']
+  Role:
+    description: A role in an operational process such as incident response.
+    patterns: ['\b(On-call Engineer|Incident Commander|Head of [A-Z][a-z]+|Security Officer|Finance Controller)\b']
+
+relations:
+  OWNS:
+    domain: [Team]
+    range: [System]
+    triggers: [" owns ", " is responsible for ", " maintains "]
+  DEPENDS_ON:
+    domain: [System]
+    range: [System]
+    triggers: [" depends on ", " calls ", " reads from "]
+  GOVERNED_BY:
+    domain: [System]
+    range: [Policy]
+    triggers: [" governed by ", " must comply with ", " subject to "]
+  ESCALATES_TO:
+    domain: [Role, Team]
+    range: [Role, Team]
+    triggers: [" escalates to ", " reports to "]

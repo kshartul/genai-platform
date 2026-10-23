@@ -1,0 +1,8 @@
+location                   = "centralindia"
+env                        = "dev"
+resource_group_name        = "rg-genai-dev"
+apps_subnet_id             = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/snet-apps"
+private_endpoint_subnet_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/snet-pe"
+acr_id                     = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.ContainerRegistry/registries/<acr>"
+acr_login_server           = "<acr>.azurecr.io"
+image_tag                  = "set-by-pipeline"

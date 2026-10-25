@@ -4,16 +4,25 @@ A reusable GenAI platform for on-Prem, AWS and Azure: retrieval-augmented genera
 workflows, LangGraph and LangChain, Semantic Chunking, Embeddings and Hybrid vector search, a Knowledge Graph, MCP
 Server, REST API calls, integrations, Guardrails, and an evaluation gate that blocks bad releases.
 
-Most organizations use both. Policies and runbooks get indexed. “How many P1 tickets are open right now?” or “revenue by region” gets queried live.
+# Use Case #
 
-Per source type
-Source	Typical systems	How it connects	Sync	Indexed or live
-Documents	SharePoint / OneDrive, S3, Azure Blob, file shares, Google Drive	Microsoft Graph API, S3/Blob events, Drive API	Full load once, then change notifications (Graph delta queries, S3/Blob events)	Indexed
-Wikis	Confluence, SharePoint pages, Notion	REST APIs (Confluence pages and spaces), Graph	Full load, then poll by “last modified” or use webhooks	Indexed
-Tickets	Jira, ServiceNow, Zendesk	REST APIs	Resolved tickets indexed for “how was this solved before?”; open tickets queried live	Both
-Databases	Redshift, Synapse/Fabric, Snowflake, SQL Server, Postgres	MCP tool running read-only SQL under a read-only DB role	None (live), or change data capture to the warehouse first	Live
-Business apps	Salesforce, Workday, SAP	Their APIs, wrapped as MCP tools	None (live)	Liv
+The Large organization hold most of their knowledge in documents, wikis, tickets and databases that people struggle to search. Employees waste time hunting for answers, the same questions keep landing on HR, IT and support teams, and decisions get made on outdated or half-found information. GenAI can fix that, but most companies hit three problems when they try:
 
+Every team builds its own chatbot. HR, IT, Finance and Engineering each build a separate bot with its own search, its own prompts and its own security. Costs multiply, quality varies, and nobody can say which answers are reliable.
+Risk blocks production. Pilots look good in a demo, but security and compliance stop them. The worries are wrong answers, confidential data shown to the wrong person, and agents taking actions nobody approved.
+Cloud lock-in. The company runs on both AWS and Azure, often after an acquisition, or because different business units chose differently. A solution tied to one cloud’s AI service can’t serve the whole company.
+
+The platform solves this by building the hard parts once: secure search, guardrails, evaluation, tool access and deployment. Each new business use case then becomes a configuration file and a test set instead of a new project. That is the business case: faster delivery, lower cost per use case, and AI the risk and compliance teams can approve.
+
+|Use case |	Who uses it	 | What it does | Capabilities used |
+|Employee knowledge assistant |	All employees	|Answers policy,
+                              HR, IT and process questions with citations|	RAG, chunking, access control, guardrails|
+Engineering / operations copilot	Engineers, on-call staff	“Who owns this service? What depends on it? What’s the runbook?”	Knowledge graph, RAG, MCP tools
+Data-warehouse Q&A	Business analysts, managers	“What was revenue by region last quarter?” in plain English, run as safe read-only SQL	Agents, MCP, SQL guardrails
+Customer support assistant	Support agents	Drafts answers from product docs and past tickets; creates tickets with approval	RAG, agents, human approval
+Compliance and policy review	Legal, risk, audit	Finds which systems fall under which policy (e.g. PCI, data retention)	Entity extraction, ontology, knowledge graph
+Contract and document analysis	Procurement, legal	Pulls parties, dates and obligations from contracts and scanned PDFs	Unstructured parsing, entity extraction
+  
 A new use case is a **YAML profile plus a golden set**, not a new stack. The same code runs
 fully offline (deterministic, free, used in CI), on **AWS** (Bedrock, OpenSearch Serverless,
 ECS Fargate, Lambda) and on **Azure** (Azure OpenAI, AI Search, Container Apps).

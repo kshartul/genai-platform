@@ -1,11 +1,8 @@
-# Private Bedrock access + a managed guardrail (content filters, prompt attacks, PII, denied topics,
-# contextual grounding). Guardrail id/version are exported to the AWS profile.
+# A managed guardrail (content filters, prompt attacks, PII, denied topics,
+# contextual grounding). Guardrail id/version are exported to the AWS profile. Private access to
+# Bedrock is in modules/aws/endpoints.
 
 variable "name" { type = string }
-variable "vpc_id" { type = string }
-variable "subnet_ids" { type = list(string) }
-variable "security_group_ids" { type = list(string) }
-variable "region" { type = string }
 variable "denied_topics" {
   type = list(object({ name = string, definition = string }))
   default = [
@@ -19,26 +16,6 @@ variable "grounding_threshold" {
 variable "tags" {
   type    = map(string)
   default = {}
-}
-
-resource "aws_vpc_endpoint" "bedrock_runtime" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.bedrock-runtime"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.subnet_ids
-  security_group_ids  = var.security_group_ids
-  private_dns_enabled = true
-  tags                = var.tags
-}
-
-resource "aws_vpc_endpoint" "bedrock_agent_runtime" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.bedrock-agent-runtime"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.subnet_ids
-  security_group_ids  = var.security_group_ids
-  private_dns_enabled = true
-  tags                = var.tags
 }
 
 resource "aws_bedrock_guardrail" "this" {

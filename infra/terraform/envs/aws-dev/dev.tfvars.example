@@ -6,3 +6,11 @@ image_tag              = "set-by-pipeline"
 bedrock_chat_model     = "<bedrock model id or inference profile ARN>"
 bedrock_fallback_model = "<second model id>"
 alert_email            = "platform-team@example.com"
+
+# Phase 1 (public endpoints). The pipeline overrides private_networking from awsPrivateNetworking.
+private_networking  = false
+assign_public_ip    = false # true only if private_subnet_ids are public subnets with no NAT
+eval_principal_arns = ["arn:aws:iam::<account-id>:role/<pipeline-service-connection-role>"]
+
+# Phase 2 (private endpoints): set awsPrivateNetworking=true in the pipeline and fill this in.
+private_route_table_ids = []

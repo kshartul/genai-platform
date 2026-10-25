@@ -13,6 +13,13 @@ steps:
       regionName: $(awsRegion)
       scriptType: inline
       inlineScript: |
+        set -euo pipefail
+        # The repository must exist before the push; envs/aws-dev only reads it.
+        terraform -chdir=infra/terraform/envs/aws-bootstrap init -input=false \
+          -backend-config="bucket=$(tfStateBucket)" -backend-config="key=genai/aws-bootstrap-dev.tfstate" \
+          -backend-config="region=$(awsRegion)" -backend-config="dynamodb_table=$(tfLockTable)"
+        terraform -chdir=infra/terraform/envs/aws-bootstrap apply -input=false -auto-approve \
+          -var="region=$(awsRegion)" -var="env=dev"
         aws ecr get-login-password | docker login --username AWS --password-stdin $(ecrRegistry)
         docker tag genai-platform:${{ parameters.imageTag }} $(ecrRegistry)/genai-dev:${{ parameters.imageTag }}
         docker push $(ecrRegistry)/genai-dev:${{ parameters.imageTag }}

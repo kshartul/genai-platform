@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 920" width="1280" height="920" font-family="Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">GenAI Platform on AWS</title>
+  <desc id="d">Users authenticate with Cognito and call API Gateway, which reaches an internal ALB over a VPC link. ECS Fargate tasks run the API and MCP server, which call Bedrock and OpenSearch Serverless. Documents uploaded to S3 flow through EventBridge and SQS to a Lambda ingest worker that indexes them into OpenSearch.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .t  { font-size: 15px; font-weight: 600; fill: #0f172a; }
+      .s  { font-size: 12.5px; fill: #334155; }
+      .l  { font-size: 12px; fill: #475569; }
+      .h  { font-size: 13px; font-weight: 700; fill: #334155; letter-spacing: .04em; }
+      .ln { stroke: #475569; stroke-width: 1.6; fill: none; }
+      .dash { stroke-dasharray: 6 5; }
+      .client  { fill: #eff6ff; stroke: #3b82f6; }
+      .edge    { fill: #f5f3ff; stroke: #8b5cf6; }
+      .compute { fill: #ecfeff; stroke: #0891b2; }
+      .core    { fill: #ffffff; stroke: #0891b2; }
+      .managed { fill: #fff7ed; stroke: #ea580c; }
+      .ingest  { fill: #f0fdf4; stroke: #16a34a; }
+      .plan    { fill: #f8fafc; stroke: #94a3b8; stroke-dasharray: 5 4; }
+      rect { stroke-width: 1.4; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="920" fill="#ffffff"/>
+  <text x="40" y="38" style="font-size:22px;font-weight:700;fill:#0f172a">GenAI Platform: AWS reference deployment</text>
+  <text x="40" y="60" class="l">One container image · infra/terraform/envs/aws-dev · Azure equivalents: Entra ID / APIM, Container Apps, Azure OpenAI, AI Search, Event Grid</text>
+
+  <!-- Clients -->
+  <rect x="60" y="80" width="300" height="60" rx="8" class="client"/>
+  <text x="76" y="105" class="t">Users and apps</text>
+  <text x="76" y="125" class="s">Cognito sign-in · Bearer JWT</text>
+
+  <rect x="400" y="80" width="300" height="60" rx="8" class="client"/>
+  <text x="416" y="105" class="t">MCP clients</text>
+  <text x="416" y="125" class="s">Claude, IDEs, other agents</text>
+
+  <rect x="920" y="80" width="320" height="60" rx="8" class="client"/>
+  <text x="936" y="105" class="t">Azure DevOps pipeline</text>
+  <text x="936" y="125" class="s">lint · tests · eval gate · image · Terraform</text>
+
+  <!-- Edge -->
+  <rect x="60" y="180" width="300" height="60" rx="8" class="edge"/>
+  <text x="76" y="205" class="t">API Gateway (HTTP API)</text>
+  <text x="76" y="225" class="s">JWT authorizer → X-User, X-Groups</text>
+  <path d="M210,140 L210,178" class="ln" marker-end="url(#a)"/>
+
+  <!-- VPC -->
+  <rect x="40" y="270" width="820" height="420" rx="12" fill="#f8fafc" stroke="#64748b" stroke-dasharray="8 6"/>
+  <text x="380" y="292" class="h">VPC · PRIVATE SUBNETS</text>
+  <text x="380" y="310" class="l">phase 2: VPC endpoints (PrivateLink) for every AWS API</text>
+
+  <rect x="60" y="305" width="300" height="46" rx="8" class="edge"/>
+  <text x="76" y="333" class="t">Internal ALB :80</text>
+  <path d="M210,240 L210,303" class="ln" marker-end="url(#a)"/>
+  <text x="220" y="260" class="l">VPC link</text>
+
+  <rect x="60" y="370" width="780" height="305" rx="10" class="compute"/>
+  <text x="76" y="392" class="h">ECS FARGATE SERVICE · 2–10 TASKS</text>
+
+  <rect x="80" y="405" width="360" height="48" rx="7" class="core"/>
+  <text x="94" y="426" class="t">API container :8000</text>
+  <text x="94" y="444" class="s">/answer /retrieve /agent/run /ingest /tools</text>
+  <path d="M210,351 L210,403" class="ln" marker-end="url(#a)"/>
+
+  <rect x="460" y="405" width="360" height="48" rx="7" class="core"/>
+  <text x="474" y="426" class="t">MCP server :8001 (sidecar)</text>
+  <text x="474" y="444" class="s">same tool registry, scopes and audit</text>
+  <path d="M550,140 L550,403" class="ln dash" marker-end="url(#a)"/>
+  <text x="560" y="168" class="l">stdio locally · not yet exposed</text>
+
+  <rect x="80" y="470" width="240" height="52" rx="7" class="core"/>
+  <text x="94" y="492" class="t">Input guardrails</text>
+  <text x="94" y="510" class="s">injection, topics, PII</text>
+  <rect x="330" y="470" width="240" height="52" rx="7" class="core"/>
+  <text x="344" y="492" class="t">Retrieval</text>
+  <text x="344" y="510" class="s">hybrid + RRF + rerank, corrective</text>
+  <rect x="580" y="470" width="240" height="52" rx="7" class="core"/>
+  <text x="594" y="492" class="t">Agents (LangGraph)</text>
+  <text x="594" y="510" class="s">router, ReAct, plan-execute</text>
+
+  <rect x="80" y="532" width="240" height="52" rx="7" class="core"/>
+  <text x="94" y="554" class="t">Output guardrails</text>
+  <text x="94" y="572" class="s">groundedness, citations</text>
+  <rect x="330" y="532" width="240" height="52" rx="7" class="core"/>
+  <text x="344" y="554" class="t">LLM gateway</text>
+  <text x="344" y="572" class="s">fallback, ACL-scoped cache, cost</text>
+  <rect x="580" y="532" width="240" height="52" rx="7" class="core"/>
+  <text x="594" y="554" class="t">Tool registry</text>
+  <text x="594" y="572" class="s">scopes, rate limits, approval</text>
+
+  <rect x="80" y="600" width="360" height="56" rx="7" class="plan"/>
+  <text x="94" y="623" class="t">Knowledge graph (in memory)</text>
+  <text x="94" y="642" class="s">Amazon Neptune: planned</text>
+  <rect x="460" y="600" width="360" height="56" rx="7" class="plan"/>
+  <text x="474" y="623" class="t">Warehouse tool (SQLite in image)</text>
+  <text x="474" y="642" class="s">Amazon Redshift: planned</text>
+
+  <!-- Managed services -->
+  <text x="920" y="262" class="h">AWS MANAGED SERVICES</text>
+  <rect x="920" y="272" width="320" height="96" rx="8" class="managed"/>
+  <text x="936" y="296" class="t">Amazon Bedrock</text>
+  <text x="936" y="316" class="s">Converse: chat model + fallback</text>
+  <text x="936" y="334" class="s">Titan Text Embeddings v2 · Rerank</text>
+  <text x="936" y="352" class="s">Bedrock Guardrails</text>
+
+  <rect x="920" y="384" width="320" height="70" rx="8" class="managed"/>
+  <text x="936" y="408" class="t">OpenSearch Serverless</text>
+  <text x="936" y="428" class="s">k-NN + BM25 · ACL filter · KMS</text>
+
+  <rect x="920" y="470" width="320" height="56" rx="8" class="managed"/>
+  <text x="936" y="494" class="t">Observability</text>
+  <text x="936" y="513" class="s">CloudWatch · X-Ray · Langfuse (optional)</text>
+
+  <rect x="920" y="542" width="320" height="56" rx="8" class="managed"/>
+  <text x="936" y="566" class="t">Cognito · KMS · Budgets</text>
+  <text x="936" y="585" class="s">users and groups · data key · cost alert</text>
+
+  <rect x="920" y="614" width="320" height="56" rx="8" class="managed"/>
+  <text x="936" y="638" class="t">Amazon ECR</text>
+  <text x="936" y="657" class="s">one image (envs/aws-bootstrap)</text>
+
+  <path d="M840,496 L918,330" class="ln" marker-end="url(#a)"/>
+  <path d="M840,556 L918,420" class="ln" marker-end="url(#a)"/>
+  <path d="M840,628 L918,498" class="ln" marker-end="url(#a)"/>
+
+  <!-- Ingestion -->
+  <rect x="40" y="720" width="1200" height="170" rx="12" fill="#fafafa" stroke="#94a3b8"/>
+  <text x="60" y="746" class="h">EVENT-DRIVEN INGESTION</text>
+  <text x="60" y="766" class="l">aws s3 cp / sync jobs from SharePoint, Confluence, file shares</text>
+
+  <rect x="60" y="790" width="190" height="64" rx="8" class="ingest"/>
+  <text x="76" y="816" class="t">S3 landing</text>
+  <text x="76" y="836" class="s">versioned, KMS</text>
+  <rect x="280" y="790" width="170" height="64" rx="8" class="ingest"/>
+  <text x="296" y="816" class="t">EventBridge</text>
+  <text x="296" y="836" class="s">Object Created</text>
+  <rect x="480" y="790" width="170" height="64" rx="8" class="ingest"/>
+  <text x="496" y="816" class="t">SQS + DLQ</text>
+  <text x="496" y="836" class="s">3 attempts</text>
+  <rect x="680" y="790" width="220" height="64" rx="8" class="ingest"/>
+  <text x="696" y="816" class="t">Lambda ingest worker</text>
+  <text x="696" y="836" class="s">same image</text>
+  <rect x="930" y="790" width="290" height="64" rx="8" class="ingest"/>
+  <text x="946" y="816" class="t">parse → redact → chunk</text>
+  <text x="946" y="836" class="s">→ embed (Titan) → index</text>
+
+  <path d="M250,822 L278,822" class="ln" marker-end="url(#a)"/>
+  <path d="M450,822 L478,822" class="ln" marker-end="url(#a)"/>
+  <path d="M650,822 L678,822" class="ln" marker-end="url(#a)"/>
+  <path d="M900,822 L928,822" class="ln" marker-end="url(#a)"/>
+  <path d="M1220,822 L1258,822 L1258,419 L1242,419" class="ln" marker-end="url(#a)"/>
+</svg>

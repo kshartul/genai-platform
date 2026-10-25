@@ -50,6 +50,9 @@ class Platform:
             if p.kg.store in ("neo4j", "neptune"):
                 from .kg import Neo4jGraph
 
+                if not p.kg.uri:
+                    raise ValueError(f"kg.store={p.kg.store} needs kg.uri (NEPTUNE_BOLT_URI / NEO4J_URI)")
+
                 self.graph = Neo4jGraph(p.kg.uri or "")
             else:
                 self.graph = InMemoryGraph()

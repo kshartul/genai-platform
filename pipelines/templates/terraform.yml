@@ -18,13 +18,16 @@ steps:
           regionName: $(awsRegion)
           scriptType: inline
           inlineScript: |
+            set -euo pipefail
             cd infra/terraform/envs/aws-${{ parameters.env }}
             terraform init -input=false \
               -backend-config="bucket=$(tfStateBucket)" -backend-config="key=genai/aws-${{ parameters.env }}.tfstate" \
               -backend-config="region=$(awsRegion)" -backend-config="dynamodb_table=$(tfLockTable)"
             terraform plan -input=false -out=tfplan -var-file=$(Agent.TempDirectory)/aws-${{ parameters.env }}.tfvars \
-              -var="image_tag=${{ parameters.imageTag }}"
+              -var="image_tag=${{ parameters.imageTag }}" -var="private_networking=$(awsPrivateNetworking)"
             terraform apply -input=false tfplan
+            # Consumed by templates/cloud-eval.yml later in the same job.
+            terraform output -json > $(Agent.TempDirectory)/tf-outputs-aws.json
   - ${{ if eq(parameters.cloud, 'azure') }}:
       - task: AzureCLI@2
         displayName: terraform apply (azure-${{ parameters.env }})

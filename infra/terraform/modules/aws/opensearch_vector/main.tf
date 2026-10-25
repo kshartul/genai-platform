@@ -1,13 +1,18 @@
-# OpenSearch Serverless VECTORSEARCH collection: k-NN + BM25 for hybrid retrieval.
-# Private access only (VPC endpoint), encrypted with a customer-managed KMS key.
+# OpenSearch Serverless VECTORSEARCH collection: k-NN + BM25 for hybrid retrieval, encrypted with a
+# customer-managed KMS key. private_access = false: public endpoint, IAM data-access policy only
+# (phase 1). private_access = true: reachable only through the collection's VPC endpoint.
 
 variable "name" { type = string }
 variable "kms_key_arn" { type = string }
 variable "vpc_id" { type = string }
 variable "subnet_ids" { type = list(string) }
 variable "security_group_ids" { type = list(string) }
+variable "private_access" {
+  type    = bool
+  default = true
+}
 variable "reader_writer_role_arns" {
-  description = "IAM roles (API, ingest worker) allowed to read/write indexes"
+  description = "IAM roles (API, ingest worker, pipeline eval role) allowed to read/write indexes"
   type        = list(string)
 }
 variable "tags" {
@@ -26,23 +31,26 @@ resource "aws_opensearchserverless_security_policy" "encryption" {
 }
 
 resource "aws_opensearchserverless_vpc_endpoint" "this" {
+  count              = var.private_access ? 1 : 0
   name               = "${var.name}-vpce"
   vpc_id             = var.vpc_id
   subnet_ids         = var.subnet_ids
   security_group_ids = var.security_group_ids
 }
 
+locals {
+  network_rules = [
+    { ResourceType = "collection", Resource = ["collection/${var.name}"] },
+    { ResourceType = "dashboard", Resource = ["collection/${var.name}"] }
+  ]
+}
+
 resource "aws_opensearchserverless_security_policy" "network" {
   name = "${var.name}-net"
   type = "network"
-  policy = jsonencode([{
-    Rules = [
-      { ResourceType = "collection", Resource = ["collection/${var.name}"] },
-      { ResourceType = "dashboard", Resource = ["collection/${var.name}"] }
-    ]
-    AllowFromPublic = false
-    SourceVPCEs     = [aws_opensearchserverless_vpc_endpoint.this.id]
-  }])
+  policy = (var.private_access
+    ? jsonencode([{ Rules = local.network_rules, AllowFromPublic = false, SourceVPCEs = [aws_opensearchserverless_vpc_endpoint.this[0].id] }])
+  : jsonencode([{ Rules = local.network_rules, AllowFromPublic = true }]))
 }
 
 resource "aws_opensearchserverless_access_policy" "data" {

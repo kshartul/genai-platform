@@ -23,7 +23,7 @@ run: seed
 mcp: seed
 	GENAI_PROFILE=$(PROFILE) python -m services.mcp_server.server
 
-ask:
+ask: seed
 	genai ask --profile $(PROFILE) "$(Q)"
 
 chunk-bakeoff: seed

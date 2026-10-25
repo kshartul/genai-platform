@@ -7,7 +7,7 @@ models:
   provider: aws
   region: ${AWS_REGION:-ap-south-1}
   chat_model: ${BEDROCK_CHAT_MODEL}            # e.g. an Anthropic Claude model id or inference profile ARN
-  fallback_models: [${BEDROCK_FALLBACK_MODEL}]
+  fallback_models: ["${BEDROCK_FALLBACK_MODEL}"]
   embedding_model: amazon.titan-embed-text-v2:0
   embedding_dim: 1024
   max_tokens: 800
@@ -27,7 +27,9 @@ guardrails:
   guardrail_version: ${BEDROCK_GUARDRAIL_VERSION:-1}
   min_groundedness: 0.7
 
-kg: {enabled: true, ontology_path: ontology/enterprise.yaml, store: neptune, uri: "${NEPTUNE_BOLT_URI}"}
+# In-memory graph until Neptune is provisioned (not yet in infra/terraform); then set
+# KG_STORE=neptune and NEPTUNE_BOLT_URI in the service environment.
+kg: {enabled: true, ontology_path: ontology/enterprise.yaml, store: "${KG_STORE:-memory}", uri: "${NEPTUNE_BOLT_URI}"}
 
 agent: {pattern: react, max_steps: 8, max_cost_usd: 0.50}
 

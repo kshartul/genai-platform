@@ -1,5 +1,12 @@
-# AWS dev environment: composes the platform modules. Networking (VPC, private subnets) comes
-# from the existing landing zone and is passed in as variables.
+# AWS dev environment: composes the platform modules. Networking (VPC, subnets) comes from the
+# existing landing zone and is passed in as variables. The ECR repository comes from
+# envs/aws-bootstrap, applied before the image is pushed.
+#
+# private_networking = false (phase 1): AWS APIs and OpenSearch Serverless over public endpoints,
+#   so tasks need NAT egress (or public subnets + assign_public_ip); the ingest Lambda runs outside
+#   the VPC; the pipeline's hosted agent runs the cloud eval directly.
+# private_networking = true (phase 2): VPC endpoints for every service, OpenSearch reachable only
+#   through its VPC endpoint, Lambda in the VPC; the cloud eval runs as an ECS task in the VPC.
 
 terraform {
   required_version = ">= 1.6"
@@ -27,6 +34,25 @@ variable "env" {
 }
 variable "vpc_id" { type = string }
 variable "private_subnet_ids" { type = list(string) }
+variable "private_networking" {
+  type    = bool
+  default = false
+}
+variable "private_route_table_ids" {
+  description = "Route tables of private_subnet_ids; required when private_networking = true (S3 gateway endpoint)"
+  type        = list(string)
+  default     = []
+}
+variable "assign_public_ip" {
+  description = "Phase 1 only, when private_subnet_ids are public subnets without NAT"
+  type        = bool
+  default     = false
+}
+variable "eval_principal_arns" {
+  description = "IAM roles that run the cloud eval from outside the VPC (the pipeline's AWS service connection role)"
+  type        = list(string)
+  default     = []
+}
 variable "image_tag" { type = string }
 variable "bedrock_chat_model" { type = string }
 variable "bedrock_fallback_model" { type = string }
@@ -50,7 +76,7 @@ resource "aws_security_group" "platform" {
     to_port     = 65535
     protocol    = "tcp"
     self        = true
-    description = "intra-platform"
+    description = "intra-platform (tasks, ALB, API Gateway VPC link, VPC endpoints)"
   }
   egress {
     from_port   = 0
@@ -60,15 +86,24 @@ resource "aws_security_group" "platform" {
   }
 }
 
-# One image for API, MCP server and ingest worker; pushed by the pipeline before apply.
-resource "aws_ecr_repository" "platform" {
-  name                 = local.name
-  image_tag_mutability = "IMMUTABLE"
-  image_scanning_configuration { scan_on_push = true }
+data "aws_ecr_repository" "platform" {
+  name = local.name
 }
 
 locals {
-  image_uri = "${aws_ecr_repository.platform.repository_url}:${var.image_tag}"
+  image_uri = "${data.aws_ecr_repository.platform.repository_url}:${var.image_tag}"
+}
+
+module "endpoints" {
+  source             = "../../modules/aws/endpoints"
+  count              = var.private_networking ? 1 : 0
+  name               = local.name
+  region             = var.region
+  vpc_id             = var.vpc_id
+  subnet_ids         = var.private_subnet_ids
+  security_group_ids = [aws_security_group.platform.id]
+  route_table_ids    = var.private_route_table_ids
+  tags               = local.tags
 }
 
 module "service" {
@@ -77,9 +112,11 @@ module "service" {
   vpc_id             = var.vpc_id
   subnet_ids         = var.private_subnet_ids
   security_group_ids = [aws_security_group.platform.id]
+  assign_public_ip   = var.assign_public_ip && !var.private_networking
   image_uri          = local.image_uri
   environment        = local.app_env
   tags               = local.tags
+  depends_on         = [module.endpoints] # tasks pull the image through the ECR endpoints in phase 2
 }
 
 module "ingest" {
@@ -87,30 +124,39 @@ module "ingest" {
   name               = local.name
   kms_key_arn        = aws_kms_key.platform.arn
   image_uri          = local.image_uri
+  in_vpc             = var.private_networking
   subnet_ids         = var.private_subnet_ids
   security_group_ids = [aws_security_group.platform.id]
   environment        = local.app_env
   tags               = local.tags
+  depends_on         = [module.endpoints]
 }
 
 module "vector" {
   source                  = "../../modules/aws/opensearch_vector"
   name                    = "${local.name}-kb"
   kms_key_arn             = aws_kms_key.platform.arn
+  private_access          = var.private_networking
   vpc_id                  = var.vpc_id
   subnet_ids              = var.private_subnet_ids
   security_group_ids      = [aws_security_group.platform.id]
-  reader_writer_role_arns = [module.service.task_role_arn, module.ingest.worker_role_arn]
+  reader_writer_role_arns = concat([module.service.task_role_arn, module.ingest.worker_role_arn], var.eval_principal_arns)
   tags                    = local.tags
 }
 
 module "bedrock" {
-  source             = "../../modules/aws/bedrock"
+  source = "../../modules/aws/bedrock"
+  name   = local.name
+  tags   = local.tags
+}
+
+module "api_gateway" {
+  source             = "../../modules/aws/api_gateway"
   name               = local.name
   region             = var.region
-  vpc_id             = var.vpc_id
   subnet_ids         = var.private_subnet_ids
   security_group_ids = [aws_security_group.platform.id]
+  alb_listener_arn   = module.service.alb_listener_arn
   tags               = local.tags
 }
 
@@ -146,8 +192,19 @@ resource "aws_budgets_budget" "genai" {
   }
 }
 
+output "api_url" { value = module.api_gateway.api_url }
 output "api_alb" { value = module.service.alb_dns_name }
-output "ecr_repository_url" { value = aws_ecr_repository.platform.repository_url }
+output "user_pool_id" { value = module.api_gateway.user_pool_id }
+output "user_pool_client_id" { value = module.api_gateway.user_pool_client_id }
+output "ecr_repository_url" { value = data.aws_ecr_repository.platform.repository_url }
 output "landing_bucket" { value = module.ingest.landing_bucket }
 output "aoss_endpoint" { value = module.vector.collection_endpoint }
 output "guardrail_id" { value = module.bedrock.guardrail_id }
+# Read by pipelines/templates/cloud-eval.yml
+output "private_networking" { value = var.private_networking }
+output "app_env" { value = local.app_env }
+output "ecs_cluster" { value = module.service.cluster_name }
+output "task_definition_arn" { value = module.service.task_definition_arn }
+output "subnet_ids" { value = var.private_subnet_ids }
+output "security_group_id" { value = aws_security_group.platform.id }
+output "assign_public_ip" { value = var.assign_public_ip && !var.private_networking }

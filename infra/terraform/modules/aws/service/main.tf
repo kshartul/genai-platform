@@ -1,5 +1,5 @@
 # ECS Fargate service running the answer/agent API and the MCP server as two containers,
-# behind an internal ALB (fronted by API Gateway / the MCP gateway in the env layer).
+# behind an internal ALB. modules/aws/api_gateway puts an authenticated HTTP API in front of it.
 
 variable "name" { type = string }
 variable "vpc_id" { type = string }
@@ -9,6 +9,11 @@ variable "image_uri" { type = string }
 variable "environment" {
   type    = map(string)
   default = {}
+}
+variable "assign_public_ip" {
+  description = "Only for public subnets without NAT; tasks stay unreachable from outside (SG has no public ingress)"
+  type        = bool
+  default     = false
 }
 variable "desired_count" {
   type    = number
@@ -151,8 +156,9 @@ resource "aws_ecs_service" "this" {
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
   network_configuration {
-    subnets         = var.subnet_ids
-    security_groups = var.security_group_ids
+    subnets          = var.subnet_ids
+    security_groups  = var.security_group_ids
+    assign_public_ip = var.assign_public_ip
   }
   load_balancer {
     target_group_arn = aws_lb_target_group.api.arn
@@ -188,3 +194,6 @@ resource "aws_appautoscaling_policy" "cpu" {
 
 output "task_role_arn" { value = aws_iam_role.task.arn }
 output "alb_dns_name" { value = aws_lb.this.dns_name }
+output "alb_listener_arn" { value = aws_lb_listener.http.arn }
+output "cluster_name" { value = aws_ecs_cluster.this.name }
+output "task_definition_arn" { value = aws_ecs_task_definition.this.arn }

@@ -8,6 +8,7 @@ and must not be exposed directly.
 from __future__ import annotations
 
 import os
+import re
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
@@ -27,9 +28,17 @@ if os.environ.get("GENAI_INGEST_ON_START", "true").lower() == "true":
 _runners: dict[str, object] = {}
 
 
+def _items(header: str | None) -> list[str]:
+    # "a,b" from direct callers; API Gateway forwards the cognito:groups claim as "[a b]"
+    return [s for s in re.split(r"[,\s]+", (header or "").strip().strip("[]")) if s]
+
+
 def principal(x_user: str | None, x_groups: str | None, x_scopes: str | None) -> Principal:
-    return Principal(x_user or "anonymous", [s for s in (x_scopes or "kb.read").split(",") if s],
-                     [g for g in (x_groups or "").split(",") if g])
+    """Cognito groups named ``scope:<scope>`` grant tool scopes; all other groups are document ACLs."""
+    groups = _items(x_groups)
+    scopes = (_items(x_scopes) or ["kb.read"]) + [g.removeprefix("scope:") for g in groups if g.startswith("scope:")]
+    return Principal(x_user or "anonymous", list(dict.fromkeys(scopes)),
+                     [g for g in groups if not g.startswith("scope:")])
 
 
 class AskIn(BaseModel):

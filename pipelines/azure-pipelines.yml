@@ -13,6 +13,11 @@ variables:
     value: $(Build.SourceVersion)
   - name: pythonVersion
     value: "3.12"
+  # Phase 1: "false" = public AWS endpoints, cloud eval from the hosted ubuntu-latest agent.
+  # Phase 2: "true" = VPC endpoints, VPC-only OpenSearch, cloud eval as an ECS task in the VPC
+  # (also set private_route_table_ids in aws-dev.tfvars).
+  - name: awsPrivateNetworking
+    value: "false"
 
 stages:
   - stage: CI

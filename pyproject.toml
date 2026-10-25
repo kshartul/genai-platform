@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "genai-platform"
 version = "0.1.0"
 description = "Reusable enterprise GenAI platform: RAG, agents, knowledge graph, MCP, guardrails and evaluation on AWS and Azure"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.6",

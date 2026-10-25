@@ -52,9 +52,9 @@ resource "azurerm_role_assignment" "eventgrid_queue_sender" {
 }
 
 resource "azurerm_eventgrid_system_topic_event_subscription" "blob_created" {
-  name                = "blob-created-to-queue"
-  system_topic        = azurerm_eventgrid_system_topic.storage.name
-  resource_group_name = var.resource_group_name
+  name                 = "blob-created-to-queue"
+  system_topic         = azurerm_eventgrid_system_topic.storage.name
+  resource_group_name  = var.resource_group_name
   included_event_types = ["Microsoft.Storage.BlobCreated"]
   subject_filter {
     subject_begins_with = "/blobServices/default/containers/documents/"

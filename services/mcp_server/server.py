@@ -77,7 +77,8 @@ def main():
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8001")))
     a = ap.parse_args()
     platform = Platform.from_profile(PROFILE, ROOT)
-    platform.ingest()
+    if os.environ.get("GENAI_INGEST_ON_START", "true").lower() == "true":
+        platform.ingest()
     server = build_server(platform)
     if a.http:
         server.run("streamable-http", host="0.0.0.0", port=a.port)

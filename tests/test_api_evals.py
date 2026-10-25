@@ -17,6 +17,15 @@ def test_cli_eval_gate_passes_on_local_profile(tmp_path):
     assert main(["eval", "--report", str(tmp_path / "eval.json")]) == 0
 
 
+def test_principal_from_gateway_claims():
+    from services.api.main import principal
+
+    p = principal("sub-123", "[hr scope:dw.read]", None)
+    assert p.groups == ["hr"] and p.scopes == ["kb.read", "dw.read"]
+    p = principal(None, "engineering", "kb.read,tickets.write")
+    assert p.groups == ["engineering"] and p.scopes == ["kb.read", "tickets.write"]
+
+
 def test_api_end_to_end():
     os.environ["GENAI_PROFILE"] = "profiles/knowledge-assistant.local.yaml"
     from services.api.main import app
@@ -33,3 +42,12 @@ def test_api_end_to_end():
     assert run["status"] == "awaiting_approval"
     done = c.post(f"/agent/{run['thread_id']}/approve", json={"approved": True}).json()
     assert done["observations"][0]["result"]["requested_by"] == "asha"
+
+
+def test_every_profile_parses():
+    from pathlib import Path
+
+    from genai_platform.config import load_profile
+
+    for path in Path("profiles").glob("*.yaml"):
+        assert load_profile(path).name, path

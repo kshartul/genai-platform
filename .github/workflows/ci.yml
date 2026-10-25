@@ -1,0 +1,48 @@
+# GitHub CI: the same offline checks as the CI and EvalGate stages of pipelines/azure-pipelines.yml.
+# Needs no cloud credentials; deployment stays in Azure DevOps.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check src services tests
+      - name: Tests (offline profile)
+        run: python scripts/seed_warehouse.py && pytest -q
+      - name: Golden-set eval gate
+        run: genai eval --profile profiles/knowledge-assistant.local.yaml --report reports/eval-local.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: reports/
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+      - name: terraform validate
+        run: |
+          for d in infra/terraform/envs/*; do
+            terraform -chdir=$d init -backend=false -input=false && terraform -chdir=$d validate || exit 1
+          done

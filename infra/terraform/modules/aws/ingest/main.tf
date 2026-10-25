@@ -4,6 +4,11 @@
 variable "name" { type = string }
 variable "kms_key_arn" { type = string }
 variable "image_uri" { type = string }
+variable "in_vpc" {
+  description = "Attach the worker to the VPC (needs NAT or the VPC endpoints in modules/aws/endpoints)"
+  type        = bool
+  default     = true
+}
 variable "subnet_ids" { type = list(string) }
 variable "security_group_ids" { type = list(string) }
 variable "environment" {
@@ -134,12 +139,21 @@ resource "aws_lambda_function" "worker" {
   image_uri     = var.image_uri
   timeout       = 900
   memory_size   = 3008
-  image_config { command = ["services.ingest_worker.handlers.aws_handler"] }
-  vpc_config {
-    subnet_ids         = var.subnet_ids
-    security_group_ids = var.security_group_ids
+  image_config {
+    # The image has no ENTRYPOINT (its CMD runs the API), so the Lambda runtime client is set here.
+    entry_point       = ["python", "-m", "awslambdaric"]
+    command           = ["services.ingest_worker.handlers.aws_handler"]
+    working_directory = "/app" # `python -m` puts the cwd on sys.path, so services.* imports resolve
   }
-  environment { variables = var.environment }
+  dynamic "vpc_config" {
+    for_each = var.in_vpc ? [1] : []
+    content {
+      subnet_ids         = var.subnet_ids
+      security_group_ids = var.security_group_ids
+    }
+  }
+  # AWS_REGION is reserved: Lambda sets it and rejects functions that try to.
+  environment { variables = { for k, v in var.environment : k => v if k != "AWS_REGION" } }
   tracing_config { mode = "Active" }
   tags = var.tags
 }

@@ -16,8 +16,34 @@ steps:
           regionName: $(awsRegion)
           scriptType: inline
           inlineScript: |
-            pip install -e ".[aws,dev]" && python scripts/seed_warehouse.py
-            genai eval --profile ${{ parameters.profile }} --report reports/eval-aws.json
+            set -euo pipefail
+            OUT=$(Agent.TempDirectory)/tf-outputs-aws.json   # written by templates/terraform.yml
+            out() { jq -r "$1" "$OUT"; }
+            mkdir -p reports
+            if [ "$(out .private_networking.value)" != "true" ]; then
+              # Phase 1: OpenSearch has a public endpoint and this agent's role is in its data-access
+              # policy (eval_principal_arns), so evaluate from here with the deployed configuration.
+              eval "$(out '.app_env.value | to_entries[] | "export \(.key)=\(.value | @sh)"')"
+              pip install -e ".[aws,dev]" && python scripts/seed_warehouse.py
+              genai eval --profile ${{ parameters.profile }} --report reports/eval-aws.json
+            else
+              # Phase 2: OpenSearch is VPC-only, so run the eval as a one-off task of the deployed
+              # task definition inside the VPC. The summary lands in CloudWatch (/genai/genai-dev, api/*).
+              CLUSTER=$(out .ecs_cluster.value)
+              NET="awsvpcConfiguration={subnets=[$(out '.subnet_ids.value | join(",")')],securityGroups=[$(out .security_group_id.value)],assignPublicIp=DISABLED}"
+              OVERRIDES=$(jq -nc --arg p "${{ parameters.profile }}" '{containerOverrides: [
+                {name: "api", command: ["genai", "eval", "--profile", $p, "--report", "/tmp/eval-aws.json"]},
+                {name: "mcp", command: ["true"]}]}')
+              TASK=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$(out .task_definition_arn.value)" \
+                --launch-type FARGATE --network-configuration "$NET" --overrides "$OVERRIDES" \
+                --query 'tasks[0].taskArn' --output text)
+              echo "eval task: $TASK"
+              for _ in 1 2 3; do aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK" && break; done
+              aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" > reports/eval-aws-task.json
+              CODE=$(jq -r '.tasks[0].containers[] | select(.name == "api") | .exitCode' reports/eval-aws-task.json)
+              echo "eval exit code: $CODE"
+              [ "$CODE" = "0" ]
+            fi
   - ${{ if eq(parameters.cloud, 'azure') }}:
       - task: AzureCLI@2
         displayName: Cloud eval (azure)

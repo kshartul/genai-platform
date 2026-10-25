@@ -1,8 +1,8 @@
 # Enterprise GenAI Platform
 
-A reusable GenAI platform for AWS and Azure: retrieval-augmented generation (RAG), agentic
-workflows, semantic chunking, embeddings and hybrid vector search, a knowledge graph, MCP
-integrations, guardrails, and an evaluation gate that blocks bad releases.
+A reusable GenAI platform for AWS and Azure: retrieval-augmented generation (RAG), Agentic
+workflows, LangGraph and LangChain, Semantic Chunking, Embeddings and Hybrid vector search, a Knowledge Graph, MCP
+Server, REST API calls, integrations, Guardrails, and an evaluation gate that blocks bad releases.
 
 A new use case is a **YAML profile plus a golden set**, not a new stack. The same code runs
 fully offline (deterministic, free, used in CI), on **AWS** (Bedrock, OpenSearch Serverless,

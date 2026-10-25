@@ -18,8 +18,8 @@ The platform solves this by building the hard parts once: secure search, guardra
 
 The sample data in the repo shows the first three working: a leave-policy question answered with its source, “Who owns the Customer-360 Pipeline?” answered from the graph, and revenue by region answered from the warehouse.
 
-Why each capability matters to the business
-RAG with citations: answers come from the company’s own documents, with sources people can check. This builds trust and reduces wrong answers.
+# Why each capability matters to the business #
+ ##RAG with citations## : answers come from the company’s own documents, with sources people can check. This builds trust and reduces wrong answers.
 Access control at search time: someone from Sales never sees HR compensation documents, even by accident. This is usually what gets security sign-off.
 Knowledge graph: answers relationship questions (“what breaks if this service fails?”) that plain document search handles poorly.
 Agents and MCP: the assistant can do things (query data, open tickets), not just answer. MCP exposes these tools in a standard, governed way, so any approved AI client can use them.

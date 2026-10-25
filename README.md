@@ -14,14 +14,8 @@ Cloud lock-in. The company runs on both AWS and Azure, often after an acquisitio
 
 The platform solves this by building the hard parts once: secure search, guardrails, evaluation, tool access and deployment. Each new business use case then becomes a configuration file and a test set instead of a new project. That is the business case: faster delivery, lower cost per use case, and AI the risk and compliance teams can approve.
 
-|Use case |	Who uses it	 | What it does | Capabilities used |
-|Employee knowledge assistant |	All employees	|Answers policy,
-                              HR, IT and process questions with citations|	RAG, chunking, access control, guardrails|
-Engineering / operations copilot	Engineers, on-call staff	“Who owns this service? What depends on it? What’s the runbook?”	Knowledge graph, RAG, MCP tools
-Data-warehouse Q&A	Business analysts, managers	“What was revenue by region last quarter?” in plain English, run as safe read-only SQL	Agents, MCP, SQL guardrails
-Customer support assistant	Support agents	Drafts answers from product docs and past tickets; creates tickets with approval	RAG, agents, human approval
-Compliance and policy review	Legal, risk, audit	Finds which systems fall under which policy (e.g. PCI, data retention)	Entity extraction, ontology, knowledge graph
-Contract and document analysis	Procurement, legal	Pulls parties, dates and obligations from contracts and scanned PDFs	Unstructured parsing, entity extraction
+<img width="908" height="690" alt="image" src="https://github.com/user-attachments/assets/b217b7c8-3d7c-42ac-aed9-0ab52bb76dc4" />
+
   
 A new use case is a **YAML profile plus a golden set**, not a new stack. The same code runs
 fully offline (deterministic, free, used in CI), on **AWS** (Bedrock, OpenSearch Serverless,

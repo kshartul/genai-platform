@@ -16,6 +16,23 @@ The platform solves this by building the hard parts once: secure search, guardra
 
 <img width="908" height="690" alt="image" src="https://github.com/user-attachments/assets/b217b7c8-3d7c-42ac-aed9-0ab52bb76dc4" />
 
+The sample data in the repo shows the first three working: a leave-policy question answered with its source, “Who owns the Customer-360 Pipeline?” answered from the graph, and revenue by region answered from the warehouse.
+
+Why each capability matters to the business
+RAG with citations: answers come from the company’s own documents, with sources people can check. This builds trust and reduces wrong answers.
+Access control at search time: someone from Sales never sees HR compensation documents, even by accident. This is usually what gets security sign-off.
+Knowledge graph: answers relationship questions (“what breaks if this service fails?”) that plain document search handles poorly.
+Agents and MCP: the assistant can do things (query data, open tickets), not just answer. MCP exposes these tools in a standard, governed way, so any approved AI client can use them.
+Guardrails and human approval: these block prompt attacks, redact personal data, and stop the system acting without a person saying yes. Risk teams need this before anything goes live.
+Evaluation gate: each release is scored against a fixed set of real test questions before it ships. Quality is measured, not judged by feel.
+Multi-cloud (AWS and Azure): the same platform runs wherever each business unit’s data lives. This avoids lock-in and lets the company use the best models on each cloud.
+The value, and how you’d measure it
+Time saved: fewer hours spent searching, and fewer repeat tickets to HR, IT and support. Measure ticket deflection and time to answer.
+Faster delivery: the spec targets each new use case live in under 2 weeks, instead of a months-long build.
+Lower cost: shared infrastructure, caching and per-request cost tracking keep spend visible and controlled per use case.
+Lower risk: access control, guardrails, audit logs and eval gates give compliance something concrete to approve.
+Better decisions: managers get data answers in minutes instead of waiting in the analyst queue.
+
   
 A new use case is a **YAML profile plus a golden set**, not a new stack. The same code runs
 fully offline (deterministic, free, used in CI), on **AWS** (Bedrock, OpenSearch Serverless,

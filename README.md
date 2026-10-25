@@ -1,6 +1,6 @@
 # Enterprise GenAI Platform
 
-A reusable GenAI platform for AWS and Azure: retrieval-augmented generation (RAG), Agentic
+A reusable GenAI platform for on-Prem, AWS and Azure: retrieval-augmented generation (RAG), Agentic
 workflows, LangGraph and LangChain, Semantic Chunking, Embeddings and Hybrid vector search, a Knowledge Graph, MCP
 Server, REST API calls, integrations, Guardrails, and an evaluation gate that blocks bad releases.
 

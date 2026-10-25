@@ -4,6 +4,16 @@ A reusable GenAI platform for on-Prem, AWS and Azure: retrieval-augmented genera
 workflows, LangGraph and LangChain, Semantic Chunking, Embeddings and Hybrid vector search, a Knowledge Graph, MCP
 Server, REST API calls, integrations, Guardrails, and an evaluation gate that blocks bad releases.
 
+Most organizations use both. Policies and runbooks get indexed. “How many P1 tickets are open right now?” or “revenue by region” gets queried live.
+
+Per source type
+Source	Typical systems	How it connects	Sync	Indexed or live
+Documents	SharePoint / OneDrive, S3, Azure Blob, file shares, Google Drive	Microsoft Graph API, S3/Blob events, Drive API	Full load once, then change notifications (Graph delta queries, S3/Blob events)	Indexed
+Wikis	Confluence, SharePoint pages, Notion	REST APIs (Confluence pages and spaces), Graph	Full load, then poll by “last modified” or use webhooks	Indexed
+Tickets	Jira, ServiceNow, Zendesk	REST APIs	Resolved tickets indexed for “how was this solved before?”; open tickets queried live	Both
+Databases	Redshift, Synapse/Fabric, Snowflake, SQL Server, Postgres	MCP tool running read-only SQL under a read-only DB role	None (live), or change data capture to the warehouse first	Live
+Business apps	Salesforce, Workday, SAP	Their APIs, wrapped as MCP tools	None (live)	Liv
+
 A new use case is a **YAML profile plus a golden set**, not a new stack. The same code runs
 fully offline (deterministic, free, used in CI), on **AWS** (Bedrock, OpenSearch Serverless,
 ECS Fargate, Lambda) and on **Azure** (Azure OpenAI, AI Search, Container Apps).

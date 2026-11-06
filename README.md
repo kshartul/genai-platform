@@ -6,7 +6,7 @@ Server, REST API calls, integrations, Guardrails, and an evaluation gate that bl
 
 # Use Case #
 
-The Large organization hold most of their knowledge in documents, wikis, tickets and databases that people struggle to search. Employees waste time hunting for answers, the same questions keep landing on HR, IT and support teams, and decisions get made on outdated or half-found information. GenAI can fix that, but most companies hit three problems when they try:
+Large organization hold most of their knowledge in documents, wikis, tickets and databases that people struggle to search. Employees waste time hunting for answers, the same questions keep landing on HR, IT and support teams, and decisions get made on outdated or half-found information. GenAI can fix that, but most companies hit three problems when they try:
 
 Every team builds its own chatbot. HR, IT, Finance and Engineering each build a separate bot with its own search, its own prompts and its own security. Costs multiply, quality varies, and nobody can say which answers are reliable.
 Risk blocks production. Pilots look good in a demo, but security and compliance stop them. The worries are wrong answers, confidential data shown to the wrong person, and agents taking actions nobody approved.
